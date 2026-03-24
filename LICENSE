@@ -1,0 +1,35 @@
+AsyncLogging Plugin License
+
+Copyright (c) 2026 [Your Name or Organization]
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License.
+
+You are free to:
+- Share — copy and redistribute the material in any medium or format
+- Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+- Attribution — You must give appropriate credit
+- NonCommercial — You may not use the material for commercial purposes
+
+The full license text is available at:
+https://creativecommons.org/licenses/by-nc/4.0/
+
+---
+
+Additional Notice for Software Components:
+
+This repository contains software components (Unreal Engine plugin and compiled native libraries).
+
+Additional terms and restrictions regarding:
+- redistribution
+- use of binaries (.dll, .so)
+- integration into other projects
+
+are described in the README.md file.
+
+---
+
+Disclaimer:
+
+The software is provided "as is", without warranty of any kind, express or implied.

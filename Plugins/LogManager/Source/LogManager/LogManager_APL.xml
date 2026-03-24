@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- steps to add to build additions -->
+<root xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- declaration of the library: register it as a dependency -->
+  <android>
+    <arm64-v8a>
+      <lib name="logmanager" />
+    </arm64-v8a>
+  </android>
+  <!-- optional files or directories to copy to Intermediate/Android/APK -->
+  <resourceCopies>
+    <isArch arch="arm64-v8a">
+      <log text="Copying liblogmanager.so ..."/>
+      <copyFile src="$S(PluginDir)/../ThirdParty/LibLogManager/Android/arm64-v8a/liblogmanager.so" dst="$S(BuildDir)/libs/arm64-v8a/liblogmanager.so"/>
+      <!--<copyFile src="$S(PluginDir)/../ThirdParty/LibLogManager/Android/arm64-v8a/libclang_rt.asan-aarch64-android.so" dst="$S(BuildDir)/libs/arm64-v8a/libclang_rt.asan-aarch64-android.so" />-->
+    </isArch>
+  </resourceCopies>
+  <!-- optional libraries to load in GameActivity.java before libUE5.so -->
+  <soLoadLibrary>
+    <loadLibrary name="logmanager" ffailmsg="Failed to load LogManager library"/>
+  </soLoadLibrary>
+</root>

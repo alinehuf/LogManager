@@ -1,0 +1,5 @@
+<map id="ULogManagerBPFunctionLibrary::CreateNewConfigFile" name="ULogManagerBPFunctionLibrary::CreateNewConfigFile">
+<area shape="rect" id="Node000001" title="Creates a new config.json file with the next participant ID and the next experiment setting." alt="" coords="5,5,215,48"/>
+<area shape="rect" id="Node000002" href="$namespace_log_manager_constants.html#aa4bd30b151f835d8565632a254b7fbee" title="Returns the base directory path where log files are stored." alt="" coords="263,5,417,48"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="215,24,250,27,244,27,215,29"/>
+</map>
