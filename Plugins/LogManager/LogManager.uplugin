@@ -3,18 +3,21 @@
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "LogManager",
-	"Description": "Asynchronous Log Management",
-	"Category": "Other",
+	"Description": "Asynchronous Log Management for Research",
+	"Category": "Analytics",
 	"CreatedBy": "AIPIC",
 	"CreatedByURL": "",
-	"DocsURL": "",
+	"DocsURL": "https://github.com/alinehuf/LogManager",
 	"MarketplaceURL": "",
-	"SupportURL": "",
-	"CanContainContent": true,
+	"SupportURL": "https://github.com/alinehuf/LogManager",
+	"CanContainContent": false,
 	"IsBetaVersion": true,
 	"IsExperimentalVersion": false,
 	"Installed": false,
-	"SupportedTargetPlatforms": [ "Win64", "Android" ],
+	"SupportedTargetPlatforms": [
+		"Win64",
+		"Android"
+	],
 	"Modules": [
 		{
 			"Name": "LogManager",

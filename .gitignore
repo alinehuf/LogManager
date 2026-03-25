@@ -73,3 +73,11 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Re-include LogManager ThirdParty folder
+!Plugins/
+!Plugins/LogManager/
+!Plugins/LogManager/Source/
+!Plugins/LogManager/Source/ThirdParty/
+!Plugins/LogManager/Source/ThirdParty/LibLogManager/
+!Plugins/LogManager/Source/ThirdParty/LibLogManager/**
