@@ -81,3 +81,4 @@ DerivedDataCache/*
 !Plugins/LogManager/Source/ThirdParty/
 !Plugins/LogManager/Source/ThirdParty/LibLogManager/
 !Plugins/LogManager/Source/ThirdParty/LibLogManager/**
+/__PACKAGE

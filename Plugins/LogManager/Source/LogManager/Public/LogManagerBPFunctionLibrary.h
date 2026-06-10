@@ -168,4 +168,19 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Box Event"), Category = "LOGLibrary")
 	static void WriteLog_BoxEvent(float gameTime, int32 number, FVector location, bool inside);
+
+
+
+	/**
+	 * For performance test only
+	 */
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test Start"), Category = "LOGLibrary")
+	static void WriteLog_Perf_Start(float gameTime);
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test"), Category = "LOGLibrary")
+	static void WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum);
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test Stop"), Category = "LOGLibrary")
+	static void WriteLog_Perf_Stop(float gameTime);
+
+	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test with UE_LOG"), Category = "LOGLibrary")
+	static void WriteLog_Perf_UE_LOG(float gameTime, int logPerFrame, float deltaTime, int logNum);
 };

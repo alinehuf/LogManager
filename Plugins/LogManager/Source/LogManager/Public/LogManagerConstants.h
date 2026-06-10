@@ -99,5 +99,10 @@ enum class EEvent : uint8 {
 	// End of XP stage: allow you to check is log file is properly completed
 	XP_STOP,
 	// For the final survey or each XP run
-	FINAL_SURVEY
+	FINAL_SURVEY,
+
+	// For performance test only
+	PERF_START,
+	PERF_TEST,
+	PERF_STOP
 };

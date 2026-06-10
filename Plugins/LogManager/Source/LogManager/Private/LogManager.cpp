@@ -320,7 +320,7 @@ bool FLogManagerModule::BeginLogEntry(EEvent ename, float gameTime, int nbFields
 		UE_LOG(LogManager, Error, TEXT("BeginLogEntry: unlock Write\n"));
 		return false;
 	}
-	UE_LOG(LogManager, Log, TEXT("Write new JSonEvent %s !\n"), *eventToString(ename));
+	//UE_LOG(LogManager, Log, TEXT("Write new JSonEvent %s !\n"), *eventToString(ename));
 	return true;
 }
 
@@ -340,7 +340,7 @@ bool FLogManagerModule::BeginConfigData(int nbFields) {
 		UE_LOG(LogManager, Error, TEXT("BeginConfigData: unlock Write\n"));
 		return false;
 	}
-	UE_LOG(LogManager, Log, TEXT("Start to write new ConfigData (%d)!\n"), nbFields);
+	//UE_LOG(LogManager, Log, TEXT("Start to write new ConfigData (%d)!\n"), nbFields);
 	return true;
 }
 

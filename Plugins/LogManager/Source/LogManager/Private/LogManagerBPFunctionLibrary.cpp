@@ -215,3 +215,92 @@ void ULogManagerBPFunctionLibrary::WriteLog_BoxEvent(float gameTime, int32 numbe
 		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
 	}
 }
+
+
+/**
+ * For performance test only
+ */
+void ULogManagerBPFunctionLibrary::WriteLog_Perf_Start(float gameTime)
+{
+	FDateTime date = FDateTime::Now();
+	FString error;
+	// Build a timestamped file name that encodes the date, time, participant ID, and setting.
+	// Format: LogManager_logPerFrame_N.json
+	FString filepath = LogManagerConstants::GetBaseLogDirectory() + "LogManager_performance_test.json";
+	// Create/Open the file
+	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return;
+	// Write PERF_START event with 3 top-level fields:
+	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_START, gameTime, 0)) {
+		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
+	}
+}
+
+void ULogManagerBPFunctionLibrary::WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum)
+{
+	static int countBlocs = 1;
+	static int countLogs = 0;
+	static double Total = 0;
+	if (logNum == 1) {
+		Total = 0; // reset total duration at the beginning of the test
+		countLogs = 0;
+	}
+
+	// Log logNum/logPerFrame
+	double Start = FPlatformTime::Seconds();
+	// Write PERF_TEST event with 3 top-level fields:
+	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_TEST, gameTime, 3)) {
+
+		FLogManagerModule::Get().AddIntData("logPerFrame", logPerFrame);
+		FLogManagerModule::Get().AddFloatData("deltaTime", deltaTime);
+		FLogManagerModule::Get().AddIntData("numLog", logNum);
+
+		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
+	}
+	double End = FPlatformTime::Seconds();
+	Total += (End - Start);  
+	++countLogs;
+
+	// end of a bloc of tests: compute and log the average duration per log entry for this bloc
+	if (logNum == logPerFrame) {
+		double AvgMs = (Total / logPerFrame) * 1000.0; // ms
+		FDateTime date = FDateTime::Now();
+		UE_LOG(LogManager, Log, TEXT("Performance result PLUGIN: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
+	}
+}
+
+void ULogManagerBPFunctionLibrary::WriteLog_Perf_Stop(float gameTime)
+{
+	// Write PERF_STOP event with 3 top-level fields:
+	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_STOP, gameTime, 0)) {
+		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
+	}
+	// Close the log file
+	FLogManagerModule::Get().FlushAndCloseJSonFile();
+}
+
+void ULogManagerBPFunctionLibrary::WriteLog_Perf_UE_LOG(float gameTime, int logPerFrame, float deltaTime, int logNum)
+{
+	static int countBlocs = 1;
+	static int countLogs = 0;
+	static double Total = 0;
+	if (logNum == 1) {
+		Total = 0; // reset total duration at the beginning of the test
+		countLogs = 0;
+	}
+
+	// Log logNum/logPerFrame
+	double Start = FPlatformTime::Seconds();
+	FDateTime now = FDateTime::Now();
+	UE_LOG(LogManager, Log, TEXT("Performance test: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d deltaTime=%f numLog=%d\n"), gameTime, now.ToUnixTimestamp(), now.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, deltaTime, logNum);
+	double End = FPlatformTime::Seconds();
+	Total += (End - Start);
+	++countLogs;
+
+	// end of a bloc of tests: compute and log the average duration per log entry for this bloc
+	if (logNum == logPerFrame) {
+		double AvgMs = (Total / logPerFrame) * 1000.0; // ms
+		FDateTime date = FDateTime::Now();
+		UE_LOG(LogManager, Log, TEXT("Performance result UE_LOG: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
+	}
+}
+
