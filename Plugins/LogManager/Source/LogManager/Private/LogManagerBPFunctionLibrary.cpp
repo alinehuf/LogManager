@@ -35,16 +35,24 @@
 
 #include "LogManagerBPFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
-#include "LogManager.h"
+#include "LogManagerModule.h"
 #include "LogManagerConstants.h"
 
+void ULogManagerBPFunctionLibrary::RequestShutdown() {
+	FLogManagerModule::Get().RequestShutdown();
+}
+
+bool ULogManagerBPFunctionLibrary::IsShutdownFinished()
+{
+	return FLogManagerModule::Get().IsShutdownFinished();
+}
 
 // ----------------------------------------------------------------------------------------
 // The Log Functions
 // ----------------------------------------------------------------------------------------
 
 // This event signals the start of an XP run: a file is open and the start event is added
-void ULogManagerBPFunctionLibrary::WriteLog_XPStart(float gameTime, int64 userId, ESetting currentSetting, FVector startLocation)
+bool ULogManagerBPFunctionLibrary::WriteLog_XPStart(float gameTime, int64 userId, ESetting currentSetting, FVector startLocation)
 {
 	FDateTime date = FDateTime::Now();
 	FString error;
@@ -58,40 +66,36 @@ void ULogManagerBPFunctionLibrary::WriteLog_XPStart(float gameTime, int64 userId
 		FString::Printf(TEXT("%02d"), date.GetSecond()) + "s_id" +
 		LexToString((uint64)userId) + "_" + settingToString(currentSetting) + ".json";
 	// Create/Open the file
-	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return; // TODO: return false and handle it in BP
-	UE_LOG(LogManager, Log, TEXT("Create file %s\n"), *filepath);
+	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return false;
+	UE_LOG(LogManagerMsg, Log, TEXT("ULogManagerBPFunctionLibrary: Create file %s\n"), *filepath);
 	// Write the XP_START event with 3 top-level fields:
 	//   - PlayerId (uint64)
 	//   - CurrentSetting (string)
 	//   - StartLocation (composed: x, y, z)
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::XP_START, gameTime, 3)) {
-
-		FLogManagerModule::Get().AddULongLongData("PlayerId", (uint64)userId);
-		FLogManagerModule::Get().AddStringData("CurrentSetting", settingToString(currentSetting));
-		// StartLocation is written as a nested JSON object with 3 sub-fields
-		FLogManagerModule::Get().AddComposedData("StartLocation", 3);
-			FLogManagerModule::Get().AddFloatData("x", startLocation.X);
-			FLogManagerModule::Get().AddFloatData("y", startLocation.Y);
-			FLogManagerModule::Get().AddFloatData("z", startLocation.Z);
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::XP_START, gameTime, 3)) return false;
+	// PlayerId and CurrentSetting
+	if (!FLogManagerModule::Get().AddULongLongData("PlayerId", (uint64)userId)) return false;
+	if (!FLogManagerModule::Get().AddStringData("CurrentSetting", settingToString(currentSetting))) return false;
+	// StartLocation is written as a nested JSON object with 3 sub-field
+	if (!FLogManagerModule::Get().AddComposedData("StartLocation", 3)) return false;
+	if (!	FLogManagerModule::Get().AddFloatData("x", startLocation.X)) return false;
+	if (!	FLogManagerModule::Get().AddFloatData("y", startLocation.Y)) return false;
+	if (!	FLogManagerModule::Get().AddFloatData("z", startLocation.Z)) return false;
+	return true;
 }
 
 // This event signal the end of an XP run: the event is added and log file is closed. 
-void ULogManagerBPFunctionLibrary::WriteLog_XPStop(float gameTime)
+bool ULogManagerBPFunctionLibrary::WriteLog_XPStop(float gameTime)
 {
 	// Write the XP_STOP event with no additional fields.
 	// Its presence in the file confirms that the session ended normally.
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::XP_STOP, gameTime, 0)) {
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::XP_STOP, gameTime, 0)) return false;
 	// Close the log file
-	FLogManagerModule::Get().FlushAndCloseJSonFile();
+	if (!FLogManagerModule::Get().CloseJSonFile()) return false;
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::CreateNewConfigFile(int64 previousUserId, ESetting previousSetting, int64& nextId, ESetting& nextSetting) {
+bool ULogManagerBPFunctionLibrary::CreateNewConfigFile(int64 previousUserId, ESetting previousSetting, int64& nextId, ESetting& nextSetting) {
 	FDateTime date = FDateTime::Now();
 	FString error;
 	// Derive the next participant ID from the previous one (via the shared library)
@@ -101,17 +105,16 @@ void ULogManagerBPFunctionLibrary::CreateNewConfigFile(int64 previousUserId, ESe
 	// The config file is always written at a fixed path and overrides the previous one
 	FString filepath = LogManagerConstants::GetBaseLogDirectory() + "config.json";
 	// Create/Open the file
-	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return;
-	UE_LOG(LogManager, Log, TEXT("Create file %s\n"), *filepath);
-	// Write the config block with 2 fields: PlayerId and Setting
-	if (FLogManagerModule::Get().BeginConfigData(2)) {
-
-		FLogManagerModule::Get().AddULongLongData("PlayerId", (uint64)nextId);
-		FLogManagerModule::Get().AddStringData("Setting", settingToString(nextSetting));
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return false;
+	UE_LOG(LogManagerMsg, Log, TEXT("Create file %s\n"), *filepath);
+	// Write the config block with 2 fields: 
+	if (!FLogManagerModule::Get().BeginConfigData(2)) return false;
+	// PlayerId and Setting
+	if (!FLogManagerModule::Get().AddULongLongData("PlayerId", (uint64)nextId)) return false;
+	if (!FLogManagerModule::Get().AddStringData("Setting", settingToString(nextSetting))) return false;
 	// Close the log file
-	FLogManagerModule::Get().FlushAndCloseJSonFile();
+	if (!FLogManagerModule::Get().CloseJSonFile()) return false;
+	return true;
 }
 
 bool ULogManagerBPFunctionLibrary::GetConfigFileInfos(int64& userId, ESetting& currentSetting) {
@@ -119,18 +122,18 @@ bool ULogManagerBPFunctionLibrary::GetConfigFileInfos(int64& userId, ESetting& c
 	// Attempt to load and deserialize the config file (with built-in retry logic)
 	TSharedPtr<FJsonObject> jsonObject = FLogManagerModule::Get().LoadConfigJson(filepath);
 	if (!jsonObject) {
-		UE_LOG(LogManager, Error, TEXT("Failed to load config file %s\n"), *filepath);
+		UE_LOG(LogManagerMsg, Error, TEXT("Failed to load config file %s\n"), *filepath);
 		return false;
 	}
 	// Extract the participant ID (stored as uint64, read back as int64)
 	if (!FLogManagerModule::Get().GetJsonField(jsonObject, "PlayerId", userId)) {
-		UE_LOG(LogManager, Error, TEXT("Failed to get user id in %s\n"), *filepath);
+		UE_LOG(LogManagerMsg, Error, TEXT("Failed to get user id in %s\n"), *filepath);
 		return false;
 	}
 	// Extract the setting name and convert it back to the ESetting enum value
 	FString settingText;
 	if (!FLogManagerModule::Get().GetJsonField(jsonObject, "Setting", settingText)) {
-		UE_LOG(LogManager, Error, TEXT("Failed to get setting in %s\n"), *filepath);
+		UE_LOG(LogManagerMsg, Error, TEXT("Failed to get setting in %s\n"), *filepath);
 		return false;
 	}
 	else {
@@ -139,7 +142,7 @@ bool ULogManagerBPFunctionLibrary::GetConfigFileInfos(int64& userId, ESetting& c
 	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_StartSurvey(float gameTime, int64 userId, int evaluation, bool usefullness, FString comment)
+bool ULogManagerBPFunctionLibrary::WriteLog_StartSurvey(float gameTime, int64 userId, int evaluation, bool usefullness, FString comment)
 {
 	FDateTime date = FDateTime::Now();
 	FString error;
@@ -153,74 +156,67 @@ void ULogManagerBPFunctionLibrary::WriteLog_StartSurvey(float gameTime, int64 us
 		FString::Printf(TEXT("%02d"), date.GetSecond()) + "s_id" +
 		LexToString((uint64)userId) + "_startSurvey.json";
 	// Create/Open the file
-	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return; // TODO: return false and handle it in BP
-	UE_LOG(LogManager, Log, TEXT("Create file %s\n"), *filepath);
+	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return false;
+	UE_LOG(LogManagerMsg, Log, TEXT("Create file %s\n"), *filepath);
 	// Write the START_SURVEY event with 3 fields: Evaluation, Usefulness, Comment
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::START_SURVEY, gameTime, 3)) {
-		FLogManagerModule::Get().AddIntData("Evaluation", evaluation);
-		FLogManagerModule::Get().AddBoolData("Usefullness", usefullness);
-		FLogManagerModule::Get().AddStringData("Comment", comment);
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::START_SURVEY, gameTime, 3)) return false;
+	if (!FLogManagerModule::Get().AddIntData("Evaluation", evaluation)) return false;
+	if (!FLogManagerModule::Get().AddBoolData("Usefullness", usefullness)) return false;
+	if (!FLogManagerModule::Get().AddStringData("Comment", comment)) return false;
 	// Close the log file
-	FLogManagerModule::Get().FlushAndCloseJSonFile();
+	if (!FLogManagerModule::Get().CloseJSonFile()) return false;
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_FinalSurvey(float gameTime, TMap<FString, FString> questionsAndAnswers)
+bool ULogManagerBPFunctionLibrary::WriteLog_FinalSurvey(float gameTime, TMap<FString, FString> questionsAndAnswers)
 {
 	// Write the FINAL_SURVEY event with a single composed field "Answers"
 	// containing one sub-field per question-answer pair.
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::FINAL_SURVEY, gameTime, 1)) {
-		FLogManagerModule::Get().AddComposedData("Answers", questionsAndAnswers.Num());
-		for (const auto& Elem : questionsAndAnswers) {
-			FLogManagerModule::Get().AddStringData(Elem.Key, Elem.Value);
-		}
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::FINAL_SURVEY, gameTime, 1)) return false;
+	if (!FLogManagerModule::Get().AddComposedData("Answers", questionsAndAnswers.Num())) return false;
+	for (const auto& Elem : questionsAndAnswers) {
+		if (!FLogManagerModule::Get().AddStringData(Elem.Key, Elem.Value)) return false;
 	}
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_CubeInteraction(float gameTime, bool isGrabbed, float timer, int64 distance, FName name)
+bool ULogManagerBPFunctionLibrary::WriteLog_CubeInteraction(float gameTime, bool isGrabbed, float timer, int64 distance, FName name)
 {
 	// Write the CUBE_INTERACTION event with 4 fields:
 	//   - IsGrabbed (bool): true = grab, false = release
 	//   - Timer (float): seconds elapsed since last interaction with this cube
 	//   - Distance (int64): distance in Unreal units between participant and cube
 	//   - Name (string): identifier of the cube involved
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::CUBE_INTERACTION, gameTime, 4)) {
-		FLogManagerModule::Get().AddBoolData("IsGrabbed", isGrabbed);
-		FLogManagerModule::Get().AddFloatData("Timer", timer);
-		FLogManagerModule::Get().AddLongLongData("Distance", distance);
-		FLogManagerModule::Get().AddStringData("Name", name.ToString());
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::CUBE_INTERACTION, gameTime, 4)) return false;
+	if (!FLogManagerModule::Get().AddBoolData("IsGrabbed", isGrabbed)) return false;
+	if (!FLogManagerModule::Get().AddFloatData("Timer", timer)) return false;
+	if (!FLogManagerModule::Get().AddLongLongData("Distance", distance)) return false;
+	if (!FLogManagerModule::Get().AddStringData("Name", name.ToString())) return false;
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_BoxEvent(float gameTime, int32 number, FVector location, bool inside)
+bool ULogManagerBPFunctionLibrary::WriteLog_BoxEvent(float gameTime, int32 number, FVector location, bool inside)
 {
 	// Write the BOX_EVENT event with 3 fields:
 	//   - Number (uint32): index of the box/zone that triggered the event
 	//   - Location (composed: x, y, z): world-space position of the zone
 	//   - Inside (bool): true = participant entered the zone, false = exited
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::BOX_EVENT, gameTime, 3)) {
-		FLogManagerModule::Get().AddUIntData("Number", static_cast<uint32>(number));
-		// Location is written as a nested JSON object with 3 sub-fields
-		FLogManagerModule::Get().AddComposedData("Location", 3);
-			FLogManagerModule::Get().AddFloatData("x", location.X);
-			FLogManagerModule::Get().AddFloatData("y", location.Y);
-			FLogManagerModule::Get().AddFloatData("z", location.Z);
-		FLogManagerModule::Get().AddBoolData("Inside", inside);
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::BOX_EVENT, gameTime, 3)) return false;
+	if (!FLogManagerModule::Get().AddUIntData("Number", static_cast<uint32>(number))) return false;
+	// Location is written as a nested JSON object with 3 sub-fields
+	if (!FLogManagerModule::Get().AddComposedData("Location", 3)) return false;
+	if (!FLogManagerModule::Get().AddFloatData("x", location.X)) return false;
+	if (!FLogManagerModule::Get().AddFloatData("y", location.Y)) return false;
+	if (!FLogManagerModule::Get().AddFloatData("z", location.Z)) return false;
+	if (!FLogManagerModule::Get().AddBoolData("Inside", inside)) return false;
+	return true;
 }
 
 
 /**
  * For performance test only
  */
-void ULogManagerBPFunctionLibrary::WriteLog_Perf_Start(float gameTime)
+bool ULogManagerBPFunctionLibrary::WriteLog_Perf_Start(float gameTime)
 {
 	FDateTime date = FDateTime::Now();
 	FString error;
@@ -228,14 +224,13 @@ void ULogManagerBPFunctionLibrary::WriteLog_Perf_Start(float gameTime)
 	// Format: LogManager_logPerFrame_N.json
 	FString filepath = LogManagerConstants::GetBaseLogDirectory() + "LogManager_performance_test.json";
 	// Create/Open the file
-	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return;
-	// Write PERF_START event with 3 top-level fields:
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_START, gameTime, 0)) {
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return false;
+	// Write PERF_START event with 0 fields
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_START, gameTime, 0)) return false;
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum)
+bool ULogManagerBPFunctionLibrary::WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum)
 {
 	static int countBlocs = 1;
 	static int countLogs = 0;
@@ -248,14 +243,11 @@ void ULogManagerBPFunctionLibrary::WriteLog_Perf_test(float gameTime, int logPer
 	// Log logNum/logPerFrame
 	double Start = FPlatformTime::Seconds();
 	// Write PERF_TEST event with 3 top-level fields:
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_TEST, gameTime, 3)) {
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_TEST, gameTime, 3)) return false;
+	if (!FLogManagerModule::Get().AddIntData("logPerFrame", logPerFrame)) return false;
+	if (!FLogManagerModule::Get().AddFloatData("deltaTime", deltaTime)) return false;
+	if (!FLogManagerModule::Get().AddIntData("numLog", logNum)) return false;
 
-		FLogManagerModule::Get().AddIntData("logPerFrame", logPerFrame);
-		FLogManagerModule::Get().AddFloatData("deltaTime", deltaTime);
-		FLogManagerModule::Get().AddIntData("numLog", logNum);
-
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
 	double End = FPlatformTime::Seconds();
 	Total += (End - Start);  
 	++countLogs;
@@ -264,18 +256,18 @@ void ULogManagerBPFunctionLibrary::WriteLog_Perf_test(float gameTime, int logPer
 	if (logNum == logPerFrame) {
 		double AvgMs = (Total / logPerFrame) * 1000.0; // ms
 		FDateTime date = FDateTime::Now();
-		UE_LOG(LogManager, Log, TEXT("Performance result PLUGIN: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
+		UE_LOG(LogManagerMsg, Log, TEXT("Performance result PLUGIN: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
 	}
+	return true;
 }
 
-void ULogManagerBPFunctionLibrary::WriteLog_Perf_Stop(float gameTime)
+bool ULogManagerBPFunctionLibrary::WriteLog_Perf_Stop(float gameTime)
 {
 	// Write PERF_STOP event with 3 top-level fields:
-	if (FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_STOP, gameTime, 0)) {
-		FLogManagerModule::Get().FinalizeConfigOrLogEntry();
-	}
+	if (!FLogManagerModule::Get().BeginLogEntry(EEvent::PERF_STOP, gameTime, 0)) return false;
 	// Close the log file
-	FLogManagerModule::Get().FlushAndCloseJSonFile();
+	if (!FLogManagerModule::Get().CloseJSonFile()) return false;
+	return true;
 }
 
 void ULogManagerBPFunctionLibrary::WriteLog_Perf_UE_LOG(float gameTime, int logPerFrame, float deltaTime, int logNum)
@@ -291,7 +283,7 @@ void ULogManagerBPFunctionLibrary::WriteLog_Perf_UE_LOG(float gameTime, int logP
 	// Log logNum/logPerFrame
 	double Start = FPlatformTime::Seconds();
 	FDateTime now = FDateTime::Now();
-	UE_LOG(LogManager, Log, TEXT("Performance test: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d deltaTime=%f numLog=%d\n"), gameTime, now.ToUnixTimestamp(), now.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, deltaTime, logNum);
+	UE_LOG(LogManagerMsg, Log, TEXT("Performance test: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d deltaTime=%f numLog=%d\n"), gameTime, now.ToUnixTimestamp(), now.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, deltaTime, logNum);
 	double End = FPlatformTime::Seconds();
 	Total += (End - Start);
 	++countLogs;
@@ -300,7 +292,7 @@ void ULogManagerBPFunctionLibrary::WriteLog_Perf_UE_LOG(float gameTime, int logP
 	if (logNum == logPerFrame) {
 		double AvgMs = (Total / logPerFrame) * 1000.0; // ms
 		FDateTime date = FDateTime::Now();
-		UE_LOG(LogManager, Log, TEXT("Performance result UE_LOG: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
+		UE_LOG(LogManagerMsg, Log, TEXT("Performance result UE_LOG: gametime=%f unixTime=%d unixMs=%d frame=%d logPerFrame=%d realLogPerFrame=%d DurationPerLog=%f count=%d\n"), gameTime, date.ToUnixTimestamp(), date.GetMillisecond(), (uint64)GFrameNumber, logPerFrame, countLogs, AvgMs, countBlocs++);
 	}
 }
 

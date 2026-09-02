@@ -61,6 +61,36 @@ namespace LogManagerConstants
 		// log files directory
 		return FPaths::Combine(FPaths::ProjectPersistentDownloadDir(), "LOGS/");
 	}
+
+	/**
+	 * Container for configuration parameters of the log buffer, such as size, count and size of the writer cache.
+	 */
+	struct LogBufferConfig
+	{
+		int32 bufferSize;
+		int32 bufferCount;
+		int32 queueCapacity;
+		int32 writeCacheSize; // TODO : faire un benchmark pour  64 KiB, 256 KiB, 1 MiB
+	};
+	/**
+	 * Returns the default configuration for the log buffer based on the current platform.
+	 * In case of platform-specific differences in memory constraints or performance characteristics, 
+	 * this function can be updated to provide appropriate defaults.
+	 * @return a LogBufferConfig struct with default values for the current platform.
+	 */
+	inline LogBufferConfig GetBufferConfig()
+	{ 
+#if PLATFORM_WINDOWS
+		return { 16ull * 1024ull * 1024ull, 8, 8, 256 * 1024 }; //	16 MB buffer, 8 buffers, queue capacity of 8, 256 KB write cache
+#elif PLATFORM_LINUX
+		return { 16ull * 1024ull * 1024ull, 8, 8, 256 * 1024 };	
+#elif PLATFORM_LINUX
+#elif PLATFORM_ANDROID
+		return { 3ull * 1024ull * 1024ull, 8, 8, 256 * 1024 }; //	3 MB buffer
+#else
+		return { 3ull * 1024ull * 1024ull, 8, 8, 256 * 1024 };
+#endif
+	}
 }
 
 /* 

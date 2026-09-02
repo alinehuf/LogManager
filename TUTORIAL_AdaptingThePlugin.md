@@ -412,7 +412,7 @@ void ULogManagerBPFunctionLibrary::WriteLog_XPStart(
         LexToString((uint64)userId) + "_" + settingToString(currentSetting) + ".json";
 
     if (!FLogManagerModule::Get().OpenNewJSonFile(filepath)) return;
-    UE_LOG(LogManager, Log, TEXT("Create file %s\n"), *filepath);
+    UE_LOG(LogManagerMsg, Log, TEXT("Create file %s\n"), *filepath);
 
     // 7 top-level fields: PlayerId, NpcSide, AmbientVolume, MinVolume,
     //                     MaxVolume, PlayerMedianWalkSpeed, UmansTimeStep

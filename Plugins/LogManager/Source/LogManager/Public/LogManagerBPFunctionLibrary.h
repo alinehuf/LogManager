@@ -68,6 +68,12 @@ class LOGMANAGER_API ULogManagerBPFunctionLibrary : public UBlueprintFunctionLib
 	GENERATED_BODY()
 
 public:
+	UFUNCTION(BlueprintCallable)
+	static void RequestShutdown();
+
+	UFUNCTION(BlueprintPure)
+	static bool IsShutdownFinished();
+
 	/**
 	 * Records the start of an XP (experiment) run.
 	 * Creates and opens a new timestamped JSON log file, then writes an XP_START event
@@ -81,7 +87,7 @@ public:
 	 * @param startLocation    World-space position of the player at XP start.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "XP Start"), Category = "LOGLibrary")
-	static void WriteLog_XPStart(float gameTime, int64 userId, ESetting currentSetting, FVector startLocation);
+	static bool WriteLog_XPStart(float gameTime, int64 userId, ESetting currentSetting, FVector startLocation);
 
 	/**
 	 * Records the end of an XP (experiment) run.
@@ -91,7 +97,7 @@ public:
 	 * @param gameTime  In-game time (seconds) at the moment of the XP stop.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "XP Stop"), Category = "LOGLibrary")
-	static void WriteLog_XPStop(float gameTime);
+	static bool WriteLog_XPStop(float gameTime);
 
 	/**
 	 * Creates a new config.json file with the next participant ID and the next experiment setting.
@@ -106,7 +112,7 @@ public:
 	 * @param nextSetting       [out] Setting to be used for the next participant.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Create Config File"), Category = "LOGLibrary")
-	static void CreateNewConfigFile(int64 previousUserId, ESetting previousSetting, int64& nextId, ESetting& nextSetting);
+	static bool CreateNewConfigFile(int64 previousUserId, ESetting previousSetting, int64& nextId, ESetting& nextSetting);
 
 	/**
 	 * Reads the current participant ID and experiment setting from the config.json file.
@@ -131,7 +137,7 @@ public:
 	 * @param comment      Free-text comment provided by the participant.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Start Survey"), Category = "LOGLibrary")
-	static void WriteLog_StartSurvey(float gameTime, int64 userId, int evaluation, bool usefullness, FString comment);
+	static bool WriteLog_StartSurvey(float gameTime, int64 userId, int evaluation, bool usefullness, FString comment);
 
 	/**
 	 * Records the final survey answers in the currently open log file.
@@ -142,7 +148,7 @@ public:
 	 * @param questionsAndAnswers  Map of question strings to their corresponding answer strings.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Final Survey"), Category = "LOGLibrary")
-	static void WriteLog_FinalSurvey(float gameTime, TMap<FString, FString> questionsAndAnswers);
+	static bool WriteLog_FinalSurvey(float gameTime, TMap<FString, FString> questionsAndAnswers);
 
 	/**
 	 * Records a participant interaction with a grabbable cube object.
@@ -155,7 +161,7 @@ public:
 	 * @param name       Identifier name of the cube object involved in the interaction.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Cube Interaction"), Category = "LOGLibrary")
-	static void WriteLog_CubeInteraction(float gameTime, bool isGrabbed, float timer, int64 distance, FName name);
+	static bool WriteLog_CubeInteraction(float gameTime, bool isGrabbed, float timer, int64 distance, FName name);
 
 	/**
 	 * Records a participant entering or exiting a defined spatial zone (box trigger).
@@ -167,19 +173,17 @@ public:
 	 * @param inside    True if the participant entered the zone, false if they exited it.
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Box Event"), Category = "LOGLibrary")
-	static void WriteLog_BoxEvent(float gameTime, int32 number, FVector location, bool inside);
-
-
+	static bool WriteLog_BoxEvent(float gameTime, int32 number, FVector location, bool inside);
 
 	/**
 	 * For performance test only
 	 */
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test Start"), Category = "LOGLibrary")
-	static void WriteLog_Perf_Start(float gameTime);
+	static bool WriteLog_Perf_Start(float gameTime);
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test"), Category = "LOGLibrary")
-	static void WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum);
+	static bool WriteLog_Perf_test(float gameTime, int logPerFrame, float deltaTime, int logNum);
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test Stop"), Category = "LOGLibrary")
-	static void WriteLog_Perf_Stop(float gameTime);
+	static bool WriteLog_Perf_Stop(float gameTime);
 
 	UFUNCTION(BlueprintCallable, meta = (DisplayName = "Performance test with UE_LOG"), Category = "LOGLibrary")
 	static void WriteLog_Perf_UE_LOG(float gameTime, int logPerFrame, float deltaTime, int logNum);
