@@ -77,6 +77,9 @@ bool LogManager::SafeSnprintfAppend(const char* what, const char* format, ...)
                 UE_LOG(LogManagerMsg, Error, TEXT("SafeSnprintfAppend: can't enqueue full buffer"));
                 return false;
             }
+            else {
+                worker->NotifySomethingToDo();
+            }
         }
         // Get a new buffer from the free queue
         if (!buffersFree->Dequeue(currentBuffer))

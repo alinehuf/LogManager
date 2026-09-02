@@ -2,7 +2,7 @@
 
 #include "HAL/Runnable.h"
 #include "HAL/ThreadSafeBool.h"
-
+#include "HAL/Event.h"
 #include "SPSCBufferQueue.h"
 #include "LogStreamReader.h"
 #include "JsonFileWriter.h"
@@ -11,9 +11,11 @@ class BufferToJsonWorker : public FRunnable
 {
 public:
     explicit BufferToJsonWorker(SPSCBufferQueue& inBuffersFree, SPSCBufferQueue& inBuffersFull, uint32 inCacheSize);
-    virtual ~BufferToJsonWorker() override = default;
+    virtual ~BufferToJsonWorker() override;
 
     virtual uint32 Run() override;
+
+	void NotifySomethingToDo(); // Wake up the worker thread if it is waiting for work (a buffer in BuffersFull or a shutdown request).
  
 	void RequestShutdown(); // Request a clean shutdown : The worker will continue processing every buffer already present in BuffersFull before terminating.
 	bool IsFinished() const; // Returns true if shutdown is requested and the worker has finished processing all buffers.
@@ -34,4 +36,6 @@ private:
     
     LogStreamReader reader;
     FJsonFileWriter jsonWriter; // JSON file writer. Used exclusively by this worker thread.
+
+	FEvent* somethingToDoEvent = nullptr; // Event to signal the worker thread that there is something to do (a buffer has been enqueued in BuffersFull or shutdown is requested). This event is set by the producer thread and waited on by the worker thread.
 };
